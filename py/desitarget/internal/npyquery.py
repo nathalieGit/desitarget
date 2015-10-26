@@ -35,6 +35,7 @@ from numpy import ndarray
 from copy import deepcopy
 import operator
 
+import sys
 try:
     basestring
 except NameError:
@@ -280,22 +281,18 @@ class Expr(Node):
             for a in operands
         ]
 
+        # note that we used to detect associativeness
+        # by testing ufunc.identity. but there used 
+        # to be a leak (fixed in https://github.com/numpy/numpy/pull/5789)
+        # It is easier to just list the associative operators here
+
+        self.is_associative = self.operator in ['+', '&', '|', '*']
+
         self.children = self.flatten(operands)
 
     @property
     def operands(self):
         return self.children
-
-    def is_associative(self):
-        """ Is the operator associative?
-
-            We test this by see if the ufunc has a value identity property.
-        """
-        if not isinstance(self.function, numpy.ufunc):
-            return False
-        if self.function.identity is not None:
-            return True
-        return False
 
     def __iter__(self):
         return iter(self.operands)
@@ -309,7 +306,7 @@ class Expr(Node):
             e.g. (a + b) + (c + d) becomes a + b + c + d
 
         """
-        if not self.is_associative(): return operands
+        if not self.is_associative: return operands
         o = []
         for a in operands:
             if not isinstance(a, Expr):
@@ -357,6 +354,7 @@ class Visitor(object):
         self.reg('visit_transpose', Transpose)
         self.reg('visit_expr', Expr)
         self.reg('visit_node', Node)
+
 
     def reg(self, attr, type):
         if hasattr(self, attr):
@@ -424,7 +422,7 @@ class QueryVisitor(Visitor):
 
     def visit_expr(self, node):
         ops = [self.visit(a) for a in node.operands]
-        if node.is_associative():
+        if node.is_associative:
             # do not use ufunc reduction because ops can 
             # be of different shape
             r = ops[0]
