@@ -10,8 +10,8 @@ from desitarget.io import read_tractor, write_targets
 from desitarget.io import iter_tractor, map_tractor
 from desitarget.io import fix_tractor_dr1_dtype
 from desitarget.cuts import calc_numobs
-from desitarget.cuts import select_targets
-### from desitarget.cuts_npyquery import select_targets
+### from desitarget.cuts import select_targets
+from desitarget.cuts_npyquery import select_targets
 
 from argparse import ArgumentParser
 import os, sys
