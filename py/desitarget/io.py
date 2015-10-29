@@ -14,11 +14,12 @@ from distutils.version import LooseVersion
 import desitarget
 from desitarget.internal import sharedmem
 
-def read_mock_durham(core_filename, photo_filename):
+def read_mock_durham(core_filename, photo_filename, truth=False):
     """
     Args:
     core_filename: filename of the hdf5 file storing core lightconedata
     photo_filename: filename of the hdf5 storing photometric data
+    truth_table (default=False): outputs truth table information 
 
     Returns:
     objects: ndarray with the structure required to go through desitarget.cuts.select_targets()   
@@ -30,86 +31,100 @@ def read_mock_durham(core_filename, photo_filename):
 
     core_data = fin_core.require_group('/Data') 
     photo_data = fin_mags.require_group('/Data') 
-    
 
-    gal_id_string = core_data['GalaxyID'].value # these are string values, not integers!                               
+    if truth :
+        n_gals = 0
+        n_gals = core_data['z_cos'].size
 
-    n_gals = 0
-    n_gals = core_data['ra'].size
+        type_table = [
+            ('Z', '>f8'), 
+            ('TYPE', '|S20'),
+            ('SUBTYPE', '|S20')
+        ]
+        data = np.ndarray(shape=(n_gals), dtype=type_table)
+        data['Z'] = core_data['z_cos']
+        data['TYPE'][:]  = "NONE"
+        data['SUBTYPE'][:]  = "NONE"
 
-    #the mock has to be converted in order to create the following columns
-    columns = [
-        'BRICKID', 'BRICKNAME', 'OBJID', 'BRICK_PRIMARY', 'TYPE',
-        'RA', 'RA_IVAR', 'DEC', 'DEC_IVAR',
-        'DECAM_FLUX', 'DECAM_MW_TRANSMISSION',
-        'WISE_FLUX', 'WISE_MW_TRANSMISSION',
-        'SHAPEDEV_R', 'SHAPEEXP_R',
+    else:
+        gal_id_string = core_data['GalaxyID'].value # these are string values, not integers!                               
+
+        n_gals = 0
+        n_gals = core_data['ra'].size
+
+        #the mock has to be converted in order to create the following columns
+        columns = [
+            'BRICKID', 'BRICKNAME', 'OBJID', 'BRICK_PRIMARY', 'TYPE',
+            'RA', 'RA_IVAR', 'DEC', 'DEC_IVAR',
+            'DECAM_FLUX', 'DECAM_MW_TRANSMISSION',
+            'WISE_FLUX', 'WISE_MW_TRANSMISSION',
+            'SHAPEDEV_R', 'SHAPEEXP_R',
         ]
 
 
-    obj_id = np.arange(n_gals)
-    brickid = np.ones(n_gals, dtype='int64')
-    shapedev_r  = np.zeros(n_gals)
-    shapeexp_r = np.zeros(n_gals)
-    wise_mw_transmission = np.ones((n_gals,4))
-    decam_mw_transmission = np.ones((n_gals,6))
-    brick_primary = np.ones(n_gals, dtype=bool)
-    morpho_type = np.chararray(n_gals, itemsize=3)
-    morpho_type[:] = 'EXP'
-    brick_name = np.chararray(n_gals, itemsize=8)
-    brick_name[:] = '0durham0'
+        obj_id = np.arange(n_gals)
+        brickid = np.ones(n_gals, dtype='int64')
+        shapedev_r  = np.zeros(n_gals)
+        shapeexp_r = np.zeros(n_gals)
+        wise_mw_transmission = np.ones((n_gals,4))
+        decam_mw_transmission = np.ones((n_gals,6))
+        brick_primary = np.ones(n_gals, dtype=bool)
+        morpho_type = np.chararray(n_gals, itemsize=3)
+        morpho_type[:] = 'EXP'
+        brick_name = np.chararray(n_gals, itemsize=8)
+        brick_name[:] = '0durham0'
 
-    ra = core_data['ra'].value                                                                          
-    dec = core_data['dec'].value 
-    dec_ivar = 1.0E10 * np.ones(n_gals)
-    ra_ivar = 1.0E10 * np.ones(n_gals)
+        ra = core_data['ra'].value                         
+        dec = core_data['dec'].value 
+        dec_ivar = 1.0E10 * np.ones(n_gals)
+        ra_ivar = 1.0E10 * np.ones(n_gals)
 
-    wise_flux = np.zeros((n_gals,4))
-    decam_flux = np.zeros((n_gals,6))
-
-    g_mags = photo_data['appDgo_tot_ext'].value                                                                        
-    r_mags = photo_data['appDro_tot_ext'].value                                                                        
-    z_mags = photo_data['appDzo_tot_ext'].value      
-
-    decam_flux[:,1] = 10**((22.5 - g_mags)/2.5)
-    decam_flux[:,2] = 10**((22.5 - r_mags)/2.5)
-    decam_flux[:,4] = 10**((22.5 - z_mags)/2.5)
-    
-    #this corresponds to the return type of read_tractor() using DECaLS DR1 tractor data.
-    type_table = [
-        ('BRICKID', '>i4'), 
-        ('BRICKNAME', '|S8'), 
-        ('OBJID', '>i4'), 
-        ('BRICK_PRIMARY', '|b1'), 
-        ('TYPE', '|S4'), 
-        ('RA', '>f8'), 
-        ('RA_IVAR', '>f4'), 
-        ('DEC', '>f8'), 
-        ('DEC_IVAR', '>f4'), 
-        ('DECAM_FLUX', '>f4', (6,)),
-        ('DECAM_MW_TRANSMISSION', '>f4', (6,)), 
-        ('WISE_FLUX', '>f4', (4,)), 
-        ('WISE_MW_TRANSMISSION', '>f4', (4,)), 
-        ('SHAPEEXP_R', '>f4'), 
-        ('SHAPEDEV_R', '>f4')
-    ]
-    data = np.ndarray(shape=(n_gals), dtype=type_table)
-    data['BRICKID'] = brickid
-    data['BRICKNAME'] = brick_name
-    data['OBJID'] = obj_id
-    data['BRICK_PRIMARY'] = brick_primary
-    data['TYPE'] = morpho_type
-    data['RA'] = ra
-    data['RA_IVAR'] = ra_ivar
-    data['DEC'] = dec
-    data['DEC_IVAR'] = dec_ivar
-    data['DECAM_FLUX'] = decam_flux
-    data['DECAM_MW_TRANSMISSION'] = decam_mw_transmission
-    data['WISE_FLUX'] = wise_flux
-    data['WISE_MW_TRANSMISSION'] = wise_mw_transmission
-    data['SHAPEEXP_R'] = shapeexp_r
-    data['SHAPEDEV_R'] = shapedev_r
-    
+        wise_flux = np.zeros((n_gals,4))
+        decam_flux = np.zeros((n_gals,6))
+        
+        g_mags = photo_data['appDgo_tot_ext'].value
+        r_mags = photo_data['appDro_tot_ext'].value
+        z_mags = photo_data['appDzo_tot_ext'].value      
+        
+        decam_flux[:,1] = 10**((22.5 - g_mags)/2.5)
+        decam_flux[:,2] = 10**((22.5 - r_mags)/2.5)
+        decam_flux[:,4] = 10**((22.5 - z_mags)/2.5)
+        
+        #this corresponds to the return type of read_tractor() using DECaLS DR1 tractor data.
+        type_table = [
+            ('BRICKID', '>i4'), 
+            ('BRICKNAME', '|S8'), 
+            ('OBJID', '>i4'), 
+            ('BRICK_PRIMARY', '|b1'), 
+            ('TYPE', '|S4'), 
+            ('RA', '>f8'), 
+            ('RA_IVAR', '>f4'), 
+            ('DEC', '>f8'), 
+            ('DEC_IVAR', '>f4'), 
+            ('DECAM_FLUX', '>f4', (6,)),
+            ('DECAM_MW_TRANSMISSION', '>f4', (6,)), 
+            ('WISE_FLUX', '>f4', (4,)), 
+            ('WISE_MW_TRANSMISSION', '>f4', (4,)), 
+            ('SHAPEEXP_R', '>f4'), 
+            ('SHAPEDEV_R', '>f4')
+        ]
+        data = np.ndarray(shape=(n_gals), dtype=type_table)
+        data['BRICKID'] = brickid
+        data['BRICKNAME'] = brick_name
+        data['OBJID'] = obj_id
+        data['BRICK_PRIMARY'] = brick_primary
+        data['TYPE'] = morpho_type
+        data['RA'] = ra
+        data['RA_IVAR'] = ra_ivar
+        data['DEC'] = dec
+        data['DEC_IVAR'] = dec_ivar
+        data['DECAM_FLUX'] = decam_flux
+        data['DECAM_MW_TRANSMISSION'] = decam_mw_transmission
+        data['WISE_FLUX'] = wise_flux
+        data['WISE_MW_TRANSMISSION'] = wise_mw_transmission
+        data['SHAPEEXP_R'] = shapeexp_r
+        data['SHAPEDEV_R'] = shapedev_r
+        
     return data
 
 def read_tractor(filename, header=False):
@@ -170,6 +185,31 @@ def fix_tractor_dr1_dtype(objects):
                 break
         return objects.astype(np.dtype(dt))
 
+def write_truth(filename, data, indir=None):
+    """ 
+        Write a truth table computed from a mock catalog.
+        
+        Args:
+            filename : output truthtable file.
+            data     : numpy structured array of truthtable targets to save
+
+    """
+    # FIXME: assert data and tsbits schema
+
+    #- Create header to include versions, etc.
+    hdr = fitsio.FITSHDR()
+    hdr['DEPNAM00'] = 'desitarget-truth'
+    hdr.add_record(dict(name='DEPVER00', 
+                        value=desitarget.__version__, comment='desitarget.__version__'))
+    hdr['DEPNAM01'] = 'desitarget-git'
+    hdr.add_record(dict(name='DEPVAL01', 
+                        value=desitarget.gitversion(), comment='git revision'))
+    
+    if indir is not None:
+        hdr['DEPNAM02'] = 'mock-files'
+        hdr['DEPVER02'] = indir
+
+    fitsio.write(filename, data, extname='TRUTH', header=hdr, clobber=True)
 
 def write_targets(filename, data, indir=None):
     """ 

@@ -6,7 +6,7 @@ import numpy as np
 
 import desitarget
 import desitarget.targets
-from desitarget.io import read_tractor, write_targets
+from desitarget.io import read_tractor, write_targets, write_truth
 from desitarget.io import read_mock_durham
 from desitarget.cuts import calc_numobs
 from desitarget.cuts import select_targets
@@ -20,6 +20,7 @@ ap = ArgumentParser()
 ap.add_argument("src_core", help="Mock lightcone 'core' file")
 ap.add_argument("src_photo", help="Mock lightcone 'photometry' file")
 ap.add_argument("dest", help="Output target selection file")
+ap.add_argument("truth_dest", help="Output target selection truth table file")
 ap.add_argument('-v', "--verbose", action='store_true')
 
 def main():
@@ -27,6 +28,7 @@ def main():
 
     t0 = time()
     objects = read_mock_durham(ns.src_core, ns.src_photo)
+    truth_objects = read_mock_durham(ns.src_core, ns.src_photo, truth=True)
 
     t1 = time()
     targetflags = select_targets(objects)
@@ -34,14 +36,18 @@ def main():
 
     targets = objects[keep]
     targetflag = targetflags[keep]
+    truth_targets = truth_objects[keep]
 
     t2 = time()
     numobs = calc_numobs(targets, targetflag)
     targets = desitarget.targets.finalize(targets, targetflag, numobs)
+#    truth_targets['TYPE'],truth_targets['SUBTYPE'] = desitargets.targets.truth(targets['TARGETFLAG'])
 
     t3 = time()
     write_targets(ns.dest, targets)
+    write_truth(ns.truth_dest, truth_targets)
     t4 = time()
+
     if ns.verbose:
         print ('written {} targets to {}'.format(len(targets), ns.dest))
         print('Read mock file {:.1f} sec'.format(t1-t0))
