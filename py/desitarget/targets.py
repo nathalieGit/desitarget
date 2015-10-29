@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.lib.recfunctions as rfn
+from desitarget.targetmask import targetmask
 
 def finalize(targets, targetflags, numobs):
     """Return new targets array with added/renamed columns
@@ -31,3 +32,25 @@ def finalize(targets, targetflags, numobs):
         [targetid, targetflags, numobs], usemask=False)
 
     return targets
+
+
+def true_type(targetflags):
+    """Return TYPE and SUBTYPE names for truth table.
+   
+    Args:
+        targetflags: 1D array of target selection bit flags
+
+    Returns:
+        type_array: 1D array of char flags.
+        subtype_array: 1D array of char flags.
+    """
+
+    n_items = len(targetflags)
+    type_array = np.chararray(n_items, itemsize=20)
+    subtype_array = np.chararray(n_items, itemsize=20)
+    type_array[:] = "GALAXY"
+    for i in range(n_items):
+        possible_names = targetmask.names(targetflags[i])
+        subtype_array[i] = possible_names[0]
+
+    return (type_array, subtype_array)
