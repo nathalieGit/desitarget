@@ -37,6 +37,8 @@ def read_mock_durham(core_filename, photo_filename, truth=False):
         n_gals = core_data['z_cos'].size
 
         type_table = [
+            ('TARGETID', '>i8'),
+            ('BRICKNAME', '|S20'),
             ('Z', '>f8'), 
             ('TYPE', '|S20'),
             ('SUBTYPE', '|S20')
@@ -45,6 +47,8 @@ def read_mock_durham(core_filename, photo_filename, truth=False):
         data['Z'] = core_data['z_cos']
         data['TYPE'][:]  = "NONE"
         data['SUBTYPE'][:]  = "NONE"
+        data['BRICKNAME'][:] = '0durham0'
+        data['TARGETID'] = np.arange(n_gals)
 
     else:
         gal_id_string = core_data['GalaxyID'].value # these are string values, not integers!                               

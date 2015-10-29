@@ -42,6 +42,7 @@ def main():
     numobs = calc_numobs(targets, targetflag)
     targets = desitarget.targets.finalize(targets, targetflag, numobs)
     (truth_targets['TYPE'],truth_targets['SUBTYPE']) = desitarget.targets.true_type(targets['TARGETFLAG'])
+    truth_targets['TARGETID'] = targets['TARGETID']
 
     t3 = time()
     write_targets(ns.dest, targets)
